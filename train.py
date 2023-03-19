@@ -34,10 +34,10 @@ default_config = SimpleNamespace(
 	wandb_entity = 'uttakarsh05',
 	dataset = 'fashion_mnist',
 	epochs = 10,
-	batch_size = 16,
+	batch_size = 8,
 	loss = 'cross_entropy',
 	optimizer = 'adam',
-	learning_rate = 1e-4,
+	learning_rate = 0.000704160852345564,
 	momentum = 0.9,
 	beta = 0.9,
 	beta1 = 0.9,
@@ -45,7 +45,7 @@ default_config = SimpleNamespace(
 	epsilon = 1e-10,
 	weight_decay = 0,
 	weight_initialization = 'He',
-	num_layers = 3,
+	num_layers = 2,
 	hidden_size = 128,
 	activation = 'relu',
 	keep_prob = 1.0,
@@ -71,6 +71,7 @@ def parse_args():
 	argparser.add_argument('-sz','--hidden_size',type = int,default = default_config.hidden_size,help = 'size of every hidden layer')
 	argparser.add_argument('-a','--activation',type = str,default = default_config.activation,help = 'activation name')
 	argparser.add_argument('-kp','--keep_prob',type = float,default = default_config.keep_prob,help = 'probability of a neuron to be dropped')
+	argparser.add_argument('-w_i','--weight_init',type = str,default = default_config.weight_initialization,help = 'activation name')
 
 	args = argparser.parse_args()
 	vars(default_config).update(vars(args))
@@ -164,6 +165,7 @@ class feedforward_NN():
 		self.epochs = None
 		self.lr = None
 		self.batch_size = None
+		self.loss = None
 		self.layers = [input_size]
 		self.mask = []
 		self.w_mask = []
@@ -234,7 +236,25 @@ class feedforward_NN():
 		
 		return o
 	
-		
+	def _find_grad_loss(self,y,y_hat):
+		if self.loss =="cross_entropy":
+			epsilon = 1e-8
+			e = -y/(y_hat+epsilon)
+			d = -(y-y_hat)
+
+		elif self.loss == 'mean_squared_error':
+			e = -(y-y_hat)
+			sum_matrix = np.sum(np.multiply(y,e),axis = 0)
+			d = np.multiply(y,sum_matrix) + np.multiply(y_hat,e)
+			#d = 2*d
+			#sum_matrix = np.ones(y_hat.shape)-y_hat
+			#d = np.multiply(e,np.multiply(y_hat,sum_matrix))
+			#d = 2*d
+
+		return e,d
+
+	
+
 	def back_prop(self,X,y):
 		y = y.T
 		y_hat = self.layer_outputs[-1][1]
@@ -244,8 +264,10 @@ class feedforward_NN():
 		self.del_w = []
 		self.del_b = []
 		
-		e = -y/(y_hat+1e-8)
-		d = -(y-y_hat)
+		#e = -y/(y_hat+1e-8)
+		#d = -(y-y_hat)
+
+		e,d = self._find_grad_loss(y,y_hat)
 		
 		self.e.append(e)
 		self.d.append(d)
@@ -286,17 +308,32 @@ class feedforward_NN():
 
 		
 	
+	def _get_loss(self,y,y_hat):
+		epsilon = 1e-8
+		if self.loss == 'cross_entropy':
+			loss = np.multiply(np.log(y_hat+epsilon),y)
+			loss = -np.sum(loss)
+
+		elif self.loss == 'mean_squared_error':
+			loss = np.square(y-y_hat)
+			loss = np.sum(loss)
+
+		return loss
+
+
+
+
 	def cost(self,X,y):
 		y_true = y.T
 		m = y_true.shape[1]
 		#print('no of examples = ',m)
 		y_hat = self._forward_prop(X)
 		
-		epsilon = 1e-8
-		loss = np.multiply(np.log(y_hat+epsilon),y_true)
+		#loss = np.multiply(np.log(y_hat+epsilon),y_true)
+		loss = self._get_loss(y_true,y_hat)
 		l2norm = sum([np.sum(np.square(self.weights[i])) for i in range(len(self.weights))])+sum([np.sum(np.square(self.bias[i])) for i in range(len(self.bias))])
 		om_theta = self.lamda*l2norm
-		cost = -np.sum(loss)/(2*m) + om_theta/(2*m)
+		cost = loss/(2*m) + om_theta/(2*m)
 		
 		return cost
 	
@@ -345,6 +382,7 @@ class feedforward_NN():
 		print('------------------------')
 		print('Model Reports')
 		print('Weight initializer = ',self.weight_intializer)
+		print('Loss function used = ',self.loss)
 		print('Optimizer = ',self.optimizer)
 		print('Layer activation = ',self.activation)
 		print('Learning rate = ',self.lr)
@@ -354,7 +392,7 @@ class feedforward_NN():
 		for i in range(1,len(self.weights)+1):
 			print('layer = ',i,' | ', 'weights trained = ',self.weights[i-1].shape )
 		try:
-			print('Final validation accuracy = ',np.round(self.val_accuracy[-1],4),' Final trainig accuracy = ',np.round(self.accuracy[-1],4))
+			print('Final validation accuracy = ',np.round(self.val_accuracy[-1],4),' Final training accuracy = ',np.round(self.accuracy[-1],4))
 		except:
 			print('empty')
 		print('Total no of epochs trained = ',self.epochs)
@@ -527,7 +565,7 @@ class NAG():
 	
 	def update(self,X_train,y_train):
 		
-		#y_hat = self.model.forward_prop(X_train)
+		y_hat = self.model.forward_prop(X_train)
 		weights = []
 		bias = []
 		for i in range(len(self.model.weights)):
@@ -537,7 +575,7 @@ class NAG():
 			bias.append(self.model.bias[i])
 			self.model.bias[i] = self.model.bias[i] - self.beta*self.bt[i]
 		
-		y_hat = self.model.forward_prop(X_train)
+		#y_hat = self.model.forward_prop(X_train)
 		
 		self.model.back_prop(X_train,y_train)
 		
@@ -656,7 +694,7 @@ class Adam():
 			self.mbt[i] = mbt
 			self.vbt[i] = vbt
 		
-		#self.t+=1
+		self.t+=1
 		
 		
 		
@@ -737,14 +775,14 @@ class NAdam():
 			self.mbt[i] = mbt
 			self.vbt[i] = vbt
 
-		#self.t+=1
+		self.t+=1
 		
 		
 def train(model,X,y,X_val,y_val,X_test,y_test,hidden_layers,hidden_size,activation,weight_initialization,batch_size,optimizer,learning_rate,lamda,epochs,keep_prob,loss):
 	
 	model.hidden_layers = hidden_layers
 	model.hidden_size = hidden_size
-	
+	model.loss = loss
 	model.keep_prob = keep_prob
 	model.batch_size = batch_size
 	
@@ -772,7 +810,8 @@ def train(model,X,y,X_val,y_val,X_test,y_test,hidden_layers,hidden_size,activati
 	optim = get_optimizer(model,optimizer,learning_rate)
 	
 	try:
-		optim.t = 1
+		#optim.t = 1
+		pass
 	except:
 		pass
 	
@@ -805,7 +844,8 @@ def train(model,X,y,X_val,y_val,X_test,y_test,hidden_layers,hidden_size,activati
 		
 		
 		try:
-			optim.t+=1
+			#optim.t+=1
+			pass
 		except:
 			pass
 		
@@ -845,43 +885,49 @@ def train(model,X,y,X_val,y_val,X_test,y_test,hidden_layers,hidden_size,activati
 
 def train_wandb(config = default_config):
 
-	with wandb.init(project = config.wandb_project,entity = config.wandb_entity,config=config):
+	run = wandb.init(project = config.wandb_project,entity = config.wandb_entity,config=config)
 
-		dataset = config.dataset
-		data  = get_data(dataset)
 
-		X_train,y_train = data[0]
-		X_val,y_val = data[1]
-		X_test,y_test = data[2]
+	config = wandb.config
 
-		
-		config = wandb.config
-		
-		input_size,output_size = X_train.shape[1],y_train.shape[1]
-		model = feedforward_NN(input_size,output_size)
-		
-		hidden_layers = config.num_layers
-		hidden_size = config.hidden_size
-		
-		activation = config.activation
-		
-		weight_initialization = config.weight_initialization
-		
-		batch_size = config.batch_size
-		
-		optimizer = config.optimizer
-		
-		learning_rate = config.learning_rate
-		
-		lamda = config.weight_decay
-		
-		epochs = config.epochs
-		
-		keep_prob = config.keep_prob
+	dataset = config.dataset
+	data  = get_data(dataset)
 
-		loss = config.loss
-		
-		train(model,X_train,y_train,X_val,y_val,X_test,y_test,hidden_layers,hidden_size ,activation,weight_initialization,batch_size,optimizer,learning_rate,lamda,epochs,keep_prob,loss)
+	X_train,y_train = data[0]
+	X_val,y_val = data[1]
+	X_test,y_test = data[2]
+
+	
+	input_size,output_size = X_train.shape[1],y_train.shape[1]
+	model = feedforward_NN(input_size,output_size)
+	
+	hidden_layers = config.num_layers
+	hidden_size = config.hidden_size
+	
+	activation = config.activation
+	
+	weight_initialization = config.weight_initialization
+	
+	batch_size = config.batch_size
+	
+	optimizer = config.optimizer
+	
+	learning_rate = config.learning_rate
+	
+	lamda = config.weight_decay
+	
+	epochs = config.epochs
+	
+	keep_prob = config.keep_prob
+
+	loss = config.loss
+
+	n = 'nhl_'+str(hidden_layers)+'_sz_'+str(hidden_size)+'_act_'+str(activation)+'_w_init_'+str(weight_initialization)+'_b_size_'+str(batch_size)+'_optim_'+str(optimizer)+'_lr_'+str(learning_rate)+'_kp_'+str(keep_prob)+'_epoch_'+str(epochs)
+
+	run.name = n
+
+	
+	train(model,X_train,y_train,X_val,y_val,X_test,y_test,hidden_layers,hidden_size ,activation,weight_initialization,batch_size,optimizer,learning_rate,lamda,epochs,keep_prob,loss)
 
 		
 		
