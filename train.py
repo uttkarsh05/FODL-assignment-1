@@ -457,26 +457,26 @@ class feedforward_NN():
 		#self.weights = w
 		#self.bias = b
 
-def get_optimizer(model,optimizer,learning_rate):
+def get_optimizer(model,optimizer,learning_rate,momentum,beta ,beta1,beta2):
 		
 	if optimizer == 'sgd':
 		optim = SGD(model,learning_rate)
 
 	if optimizer == 'momentum':
 		#print('it came here')
-		optim = Momentum(model,learning_rate)
+		optim = Momentum(model,learning_rate,momentum)
 
 	if optimizer == 'nag':
-		optim = NAG(model,learning_rate)
+		optim = NAG(model,learning_rate,momentum)
 
 	if optimizer == 'rmsprop':
-		optim = RMSProp(model,learning_rate)
+		optim = RMSProp(model,learning_rate,beta)
 
 	if optimizer == 'adam':
-		optim = Adam(model,learning_rate)
+		optim = Adam(model,learning_rate,beta1,beta2)
 
 	if optimizer == 'nadam':
-		optim = NAdam(model,learning_rate)
+		optim = NAdam(model,learning_rate,beta1,beta2)
 
 	return optim
 
@@ -778,7 +778,7 @@ class NAdam():
 		self.t+=1
 		
 		
-def train(model,X,y,X_val,y_val,X_test,y_test,hidden_layers,hidden_size,activation,weight_initialization,batch_size,optimizer,learning_rate,lamda,epochs,keep_prob,loss):
+def train(model,X,y,X_val,y_val,X_test,y_test,hidden_layers,hidden_size,activation,weight_initialization,batch_size,optimizer,learning_rate,lamda,epochs,keep_prob,loss,momentum,beta,beta1,beta2):
 	
 	model.hidden_layers = hidden_layers
 	model.hidden_size = hidden_size
@@ -807,7 +807,7 @@ def train(model,X,y,X_val,y_val,X_test,y_test,hidden_layers,hidden_size,activati
 	
 	model.optimizer = optimizer
 	model.lr = learning_rate
-	optim = get_optimizer(model,optimizer,learning_rate)
+	optim = get_optimizer(model,optimizer,learning_rate,momentum,beta ,beta1,beta2)
 	
 	try:
 		#optim.t = 1
