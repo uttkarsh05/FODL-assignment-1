@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, TensorDataset
 from torch.utils.data import DataLoader
 import tensorflow as tf
 import time
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score,confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import wandb
@@ -33,8 +33,8 @@ default_config = SimpleNamespace(
 	wandb_project = 'sweeps',
 	wandb_entity = 'uttakarsh05',
 	dataset = 'fashion_mnist',
-	epochs = 10,
-	batch_size = 8,
+	epochs = 8,
+	batch_size = 16,
 	loss = 'cross_entropy',
 	optimizer = 'adam',
 	learning_rate = 0.000704160852345564,
@@ -45,10 +45,10 @@ default_config = SimpleNamespace(
 	epsilon = 1e-10,
 	weight_decay = 0,
 	weight_initialization = 'He',
-	num_layers = 2,
+	num_layers = 1,
 	hidden_size = 128,
 	activation = 'relu',
-	keep_prob = 1.0,
+	keep_prob = 0.9,
 )
 
 def parse_args():
@@ -877,10 +877,15 @@ def train(model,X,y,X_val,y_val,X_test,y_test,hidden_layers,hidden_size,activati
 		
 		model.val_cost_fun.append(val_cost)
 		model.val_accuracy.append(val_accuracy)
+		#cf = confusion_matrix(np.argmax(y_test.T,axis=0),model.predict(X_test))
+		#name = 'confusion_matrix'+str(i+1)+'.csv'
+		#np.savetxt(name,cf,delimiter=',')
 		
 		
 		
 	model.print_report()
+	#cf = confusion_matrix(np.argmax(y_test.T,axis=0),model.predict(X_test))
+	#np.savetxt('final_confusion_matrix.csv',cf,delimiter=',')
 
 
 def train_wandb(config = default_config):
@@ -921,13 +926,17 @@ def train_wandb(config = default_config):
 	keep_prob = config.keep_prob
 
 	loss = config.loss
+	momentum = config.momentum
+	beta = config.beta
+	beta1 = config.beta1
+	beta2 = config.beta2
 
 	n = 'nhl_'+str(hidden_layers)+'_sz_'+str(hidden_size)+'_act_'+str(activation)+'_w_init_'+str(weight_initialization)+'_b_size_'+str(batch_size)+'_optim_'+str(optimizer)+'_lr_'+str(learning_rate)+'_kp_'+str(keep_prob)+'_epoch_'+str(epochs)
 
 	run.name = n
 
 	
-	train(model,X_train,y_train,X_val,y_val,X_test,y_test,hidden_layers,hidden_size ,activation,weight_initialization,batch_size,optimizer,learning_rate,lamda,epochs,keep_prob,loss)
+	train(model,X_train,y_train,X_val,y_val,X_test,y_test,hidden_layers,hidden_size ,activation,weight_initialization,batch_size,optimizer,learning_rate,lamda,epochs,keep_prob,loss,momentum,beta,beta1,beta2)
 
 		
 		
